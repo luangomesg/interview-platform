@@ -1,6 +1,7 @@
 import InterviewCard from "@/components/InterviewCard";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser, getInterviewsByUserId, getLatestInterviews } from "@/lib/actions/auth.actions";
+import { getCurrentUser } from "@/lib/actions/auth.actions";
+import {getInterviewsByUserId, getLatestInterviews} from '@/lib/actions/general.action';
 
 import Image from "next/image";
 import Link from "next/link";
@@ -10,14 +11,14 @@ export default async function Home() {
   const user = await getCurrentUser()
 
   const [userInterviews, latestInterviews] = await Promise.all([
-    await getInterviewsByUserId(user?.id!),
-    await getLatestInterviews({userId: user?.id!})
+    await getInterviewsByUserId(user?.id ?? ''),
+    await getLatestInterviews({userId: user?.id ?? ''})
   ])
   
   
 
-  const hasPastInterviews = userInterviews?.length > 0
-  const hasUpcomingInterviews = latestInterviews?.length > 0
+  const hasPastInterviews = (userInterviews ?? []).length > 0
+  const hasUpcomingInterviews = (latestInterviews ?? []).length > 0
 
   return (
     <>
