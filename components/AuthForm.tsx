@@ -18,11 +18,20 @@ import { signIn, signUp } from "@/lib/actions/auth.actions"
 
 
 const authFormSchema = (type:FormType) => {
-
   return z.object({
-    name: type === 'sign-up' ? z.string().min(3) : z.string().optional(),
-    email: z.string().email(),
-    password: z.string().min(6),
+    name: type === 'sign-up' 
+      ? z.string().min(3, {
+          message: "Name must be at least 3 characters long"
+        })
+      : z.string().optional(),
+    email: z.string({
+      required_error: "Email is required",
+    }).email("Please enter a valid email address"),
+    password: z.string({
+      required_error: "Password is required",
+    }).min(8, {
+      message: "Password must be at least 8 characters long"
+    }),
   })
 }
 
@@ -40,10 +49,10 @@ export default function AuthForm({type}: {type: FormType}) {
       email: "",
       password: "",
     },
+    mode: "onChange" // Isso fará a validação acontecer em tempo real
   })
  
   async function onSubmit(values: z.infer<typeof formSchema>) {
-
     try{
       if(type === 'sign-up') {
         const {name, email, password} = values
@@ -65,22 +74,35 @@ export default function AuthForm({type}: {type: FormType}) {
         router.push('/sign-in')
       } else {
         const {email, password} = values
-        const userCredentials = await signInWithEmailAndPassword(auth, email, password)
-        const idToken = await userCredentials.user.getIdToken()
-        if (!idToken) {
-          toast.error("Error signing in.")
+        try {
+          const userCredentials = await signInWithEmailAndPassword(auth, email, password)
+          const idToken = await userCredentials.user.getIdToken()
+          if (!idToken) {
+            toast.error("Error signing in.")
+            return
+          }
+          await signIn({
+            email,
+            idToken,
+          })
+          toast.success("Sign in successfully.")
+          router.push('/')
+        } catch (signInError: any) {
+          if (signInError.code === "auth/wrong-password" || signInError.code === "auth/user-not-found" || signInError.code === "auth/invalid-credential") {
+            toast.error("Invalid email or password")
+          } else {
+            toast.error("An error occurred while signing in")
+          }
           return
         }
-        await signIn({
-          email,
-          idToken,
-        })
-        toast.success("Sign in successfully.")
-        router.push('/')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log(error)
-      toast.error(`There was an error: ${error}`)
+      if (error.code === "auth/email-already-in-use") {
+        toast.error("Email already exists")
+      } else {
+        toast.error("An error occurred. Please try again.")
+      }
     }
   }
 
